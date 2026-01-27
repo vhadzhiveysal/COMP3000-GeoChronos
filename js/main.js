@@ -7,6 +7,9 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 
+// create cluster group
+const markerCluster = L.markerClusterGroup();
+
 // load event data
 fetch("data/sample-events.json")
   .then(response => response.json())
@@ -18,8 +21,7 @@ fetch("data/sample-events.json")
     console.error("Error loading events:", error);
   });
 
-
-// display markers on the map
+// display markers on the map (with clustering)
 function displayEvents(events) {
   events.forEach(event => {
 
@@ -33,5 +35,10 @@ function displayEvents(events) {
 
     marker.bindPopup(popupContent);
 
+    // add to cluster
+    markerCluster.addLayer(marker);
   });
+
+  // add cluster group to map
+  map.addLayer(markerCluster);
 }

@@ -5,5 +5,26 @@
     "lat": 50.680,
     "lon": 4.412,
     "summary": "A decisive battle in the Napoleonic Wars."
+  },
+  {
+    "title": "Test Event",
+    "year": 1850,
+    "lat": 50.7,
+    "lon": 4.4,
+    "summary": "Another event."
+  },
+  {
+    "title": "Test Event",
+    "year": 1850,
+    "lat": 51.2,
+    "lon": 4.44,
+    "summary": "Another event."
+  },
+  {
+    "title": "Test Event",
+    "year": 1850,
+    "lat": 50.2,
+    "lon": 4.1,
+    "summary": "Another event."
   }
 ]

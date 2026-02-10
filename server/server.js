@@ -7,38 +7,59 @@ app.use(cors());
 
 const PORT = 3000;
 
-async function getCoordinatesFromPages(pages) {
+/**
+ * Extract the first valid coordinate from Wikimedia event pages
+ */
+function extractBestCoordinates(event) {
+  if (!event.pages) return null;
 
-    for (const page of pages.slice(0, 5)) {
-        const title = page.title || page;
-        const url =
-            "https://en.wikipedia.org/w/api.php" +
-            "?action=query" +
-            "&prop=coordinates" +
-            "&titles=" + encodeURIComponent(title) +
-            "&format=json" +
-            "&origin=*";
-
-        try {
-
-            const response = await fetch(url);
-            const data = await response.json();
-
-            const resultPages = data.query.pages;
-            const result = Object.values(resultPages)[0];
-
-            if (result.coordinates) {
-
-                return {
-                    lat: result.coordinates[0].lat,
-                    lon: result.coordinates[0].lon
-                };
-            }
-        } catch (err) {
-            continue;
-        }
+  for (const page of event.pages) {
+    if (
+      page.coordinates &&
+      typeof page.coordinates.lat === "number" &&
+      typeof page.coordinates.lon === "number"
+    ) {
+      return {
+        lat: page.coordinates.lat,
+        lon: page.coordinates.lon
+      };
     }
-    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Fetch events for a single day
+ */
+async function fetchDay(month, day) {
+  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/${month}/${day}`;
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "GeoChronos/1.0 (student project)",
+      "Accept": "application/json"
+    }
+  });
+
+  if (!res.ok) throw new Error("Wikimedia API error");
+
+  const data = await res.json();
+  const results = [];
+
+  for (const event of data.events) {
+    const coords = extractBestCoordinates(event);
+    if (!coords) continue;
+
+    results.push({
+      year: event.year,
+      title: event.text,
+      lat: coords.lat,
+      lon: coords.lon
+    });
+  }
+
+  return results;
 }
 
 // home
@@ -46,108 +67,49 @@ app.get("/", (req, res) => {
   res.send("GeoChronos API running");
 });
 
-// get events by date
-app.get("/api/events", async (req, res) => {
-
-    let {month, day} = req.query;
-
-    if(!month || !day) {
-        return res.status(400).json({
-            error: "Month and day required"
-        });
-    }
-
-    // pad to 2 digits (i.e: 2 → 02)
-    month = String(month).padStart(2, "0");
-    day = String(day).padStart(2, "0");
-
-    try {
-
-        const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/${month}/${day}`;
-
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent": "GeoChronos/1.0 (student project)",
-                "Api-User-Agent": "GeoChronos/1.0 (student project)",
-                "Accept": "application/json"
-            }
-        });
-
-        if(!response.ok) {
-            const text = await response.text();
-            console.error("wikipedia response:", text);
-            throw new Error("wikipedia api error");
-        }
-        
-        const data = await response.json();
-
-        const events = data.events.map(e => ({
-            year: e.year,
-            title: e.text,
-            pages: e.pages.map(p => p.title)
-        }));
-
-        res.json(events);
-    } catch (err) {
-
-        console.error(err);
-
-        res.status(500).json({
-            error: "Failed to fetch events"
-        });
-    }
-});
-
+// events endpoint (single day OR full year)
 app.get("/api/events-with-location", async (req, res) => {
+  let { month, day } = req.query;
 
-    let { month, day } = req.query;
+  try {
+    console.time("events");
 
-    if (!month || !day) {
-    return res.status(400).json({
-        error: "Month and day required"
-    });
+    // CASE 1: specific day requested
+    if (month && day) {
+      month = String(month).padStart(2, "0");
+      day = String(day).padStart(2, "0");
+
+      const results = await fetchDay(month, day);
+      console.timeEnd("events");
+      return res.json(results);
     }
 
-    month = String(month).padStart(2, "0");
-    day = String(day).padStart(2, "0");
+    // CASE 2: no date → fetch entire year
+    const allResults = [];
 
-    try {
-        // fetch events first
-        const eventsUrl = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/${month}/${day}`;
-        const eventsRes = await fetch(eventsUrl);
-        const eventsData = await eventsRes.json();
+    for (let m = 1; m <= 12; m++) {
+      const mm = String(m).padStart(2, "0");
 
-        const results = [];
+      for (let d = 1; d <= 31; d++) {
+        const dd = String(d).padStart(2, "0");
 
-        // limit for now (api safety)
-        const limitedEvents = eventsData.events.slice(0, 15);
-
-        for (const e of limitedEvents) {
-
-            if (!e.pages.length) continue;
-
-            const coords = await getCoordinatesFromPages(e.pages);
-
-            if (!coords) continue;
-
-            results.push({
-                year: e.year,
-                title: e.text,
-                lat: coords.lat,
-                lon: coords.lon
-            });
+        try {
+          const dayResults = await fetchDay(mm, dd);
+          allResults.push(...dayResults);
+        } catch {
+          // invalid dates (e.g. Feb 30) safely ignored
+          continue;
         }
-
-        res.json(results);
-
-    } catch (err) {
-
-        console.error(err);
-
-        res.status(500).json({
-            error: "Failed to fetch events"
-        });
+      }
     }
+
+    console.timeEnd("events");
+    res.json(allResults);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
 });
 
 app.listen(PORT, () => {

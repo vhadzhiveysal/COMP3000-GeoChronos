@@ -18,11 +18,16 @@ const slider = document.getElementById("slider");
 const rangeDisplay = document.getElementById("rangeDisplay");
 
 // load event data
-fetch("data/sample-events.json")
+fetch("http://localhost:3000/api/events-with-location")
   .then(response => response.json())
-  .then(events => {
-    allEvents = events;
+  .then(data => {
 
+    if (!Array.isArray(data)) {
+      console.error("api did not return an array:", data);
+      return;
+    }
+    
+    allEvents = data;
     setupTimeline(allEvents);
     renderEvents(allEvents);
   })
@@ -68,7 +73,6 @@ function renderEvents(events) {
     marker.bindPopup(`
       <strong>${event.title}</strong><br>
       ${event.year}<br>
-      ${event.summary}
     `);
 
     markerCluster.addLayer(marker);

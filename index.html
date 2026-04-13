@@ -17,13 +17,25 @@
 
   <main>
     <div id="timeline">
+      <div id="controls">
+        <label for="eventType">History type:</label>
+        <select id="eventType">
+          <option value="events" selected>Events</option>
+          <option value="selected">Selected</option>
+          <option value="births">Births</option>
+          <option value="deaths">Deaths</option>
+          <option value="holidays">Holidays</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+
       <div id="slider"></div>
       <p id="rangeDisplay"></p>
     </div>
+
     <div id="map"></div>
   </main>
 
-  
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>

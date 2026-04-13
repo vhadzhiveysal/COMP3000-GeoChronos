@@ -1,11 +1,49 @@
 import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 app.use(cors());
 
 const PORT = 3000;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const CACHE_DIR = path.join(__dirname, "cache");
+const CACHE_FILE = path.join(CACHE_DIR, "day-cache.json");
+
+let dayCache = {};
+let saveTimer = null;
+
+async function loadCache() {
+  try {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    const raw = await fs.readFile(CACHE_FILE, "utf-8");
+    dayCache = JSON.parse(raw);
+    console.log(`Loaded cache with ${Object.keys(dayCache).length} entries`);
+  } catch {
+    dayCache = {};
+    console.log("No existing cache found, starting fresh");
+  }
+}
+
+function scheduleCacheSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+
+  saveTimer = setTimeout(async () => {
+    try {
+      await fs.mkdir(CACHE_DIR, { recursive: true });
+      await fs.writeFile(CACHE_FILE, JSON.stringify(dayCache, null, 2), "utf-8");
+      console.log("Cache saved");
+    } catch (err) {
+      console.error("Failed to save cache:", err);
+    }
+  }, 500);
+}
 
 /**
  * Extract the first valid coordinate from Wikimedia event pages
@@ -29,11 +67,18 @@ function extractBestCoordinates(event) {
   return null;
 }
 
-/**
- * Fetch events for a single day
- */
-async function fetchDay(month, day) {
-  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/all/${month}/${day}`;
+function getCacheKey(type, month, day) {
+  return `${type}:${month}-${day}`;
+}
+
+async function fetchDay(type, month, day) {
+  const key = getCacheKey(type, month, day);
+
+  if (dayCache[key]) {
+    return dayCache[key];
+  }
+
+  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/${type}/${month}/${day}`;
 
   const res = await fetch(url, {
     headers: {
@@ -42,12 +87,21 @@ async function fetchDay(month, day) {
     }
   });
 
-  if (!res.ok) throw new Error("Wikimedia API error");
+  if (!res.ok) {
+    throw new Error(`Wikimedia API error ${res.status} for ${type} ${month}/${day}`);
+  }
 
   const data = await res.json();
+
+  // Feed payload shape differs by type
+  const feedItems =
+    Array.isArray(data[type]) ? data[type]
+    : Array.isArray(data.events) ? data.events
+    : [];
+
   const results = [];
 
-  for (const event of data.events) {
+  for (const event of feedItems) {
     const coords = extractBestCoordinates(event);
     if (!coords) continue;
 
@@ -59,6 +113,9 @@ async function fetchDay(month, day) {
     });
   }
 
+  dayCache[key] = results;
+  scheduleCacheSave();
+
   return results;
 }
 
@@ -67,50 +124,46 @@ app.get("/", (req, res) => {
   res.send("GeoChronos API running");
 });
 
-// events endpoint (single day OR full year)
+app.get("/api/cache-status", (req, res) => {
+  res.json({
+    cachedDays: Object.keys(dayCache).length
+  });
+});
+
+// single-day endpoint only
 app.get("/api/events-with-location", async (req, res) => {
-  let { month, day } = req.query;
+  let { month, day, type } = req.query;
+
+  type = String(type || "events").toLowerCase();
+
+  const supported = new Set(["events", "selected", "births", "deaths", "holidays", "all"]);
+  if (!supported.has(type)) {
+    return res.status(400).json({
+      error: `Invalid type. Supported types: ${Array.from(supported).join(", ")}`
+    });
+  }
+
+  if (!month || !day) {
+    return res.status(400).json({
+      error: "month and day are required"
+    });
+  }
+
+  month = String(month).padStart(2, "0");
+  day = String(day).padStart(2, "0");
 
   try {
-    console.time("events");
-
-    // CASE 1: specific day requested
-    if (month && day) {
-      month = String(month).padStart(2, "0");
-      day = String(day).padStart(2, "0");
-
-      const results = await fetchDay(month, day);
-      console.timeEnd("events");
-      return res.json(results);
-    }
-
-    // CASE 2: no date → fetch entire year
-    const allResults = [];
-
-    for (let m = 1; m <= 12; m++) {
-      const mm = String(m).padStart(2, "0");
-
-      for (let d = 1; d <= 31; d++) {
-        const dd = String(d).padStart(2, "0");
-
-        try {
-          const dayResults = await fetchDay(mm, dd);
-          allResults.push(...dayResults);
-        } catch {
-          // invalid dates (e.g. Feb 30) safely ignored
-          continue;
-        }
-      }
-    }
-
-    console.timeEnd("events");
-    res.json(allResults);
-
+    const results = await fetchDay(type, month, day);
+    res.json(results);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch events" });
+    console.error(err.message);
+    res.status(500).json({
+      error: "Failed to fetch events"
+    });
   }
 });
+
+await loadCache();
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

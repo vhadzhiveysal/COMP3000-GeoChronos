@@ -1,98 +1,246 @@
 // initialise the map
 const map = L.map("map").setView([20, 0], 2);
 
-// add OpenStreetMap tiles
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "© OpenStreetMap contributors"
+// use CARTO tiles
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 20
 }).addTo(map);
-
 
 // create cluster group
 const markerCluster = L.markerClusterGroup();
+map.addLayer(markerCluster);
 
 // store all events
 let allEvents = [];
+const seenEvents = new Set();
 
-// timeline events
+// timeline elements
 const slider = document.getElementById("slider");
 const rangeDisplay = document.getElementById("rangeDisplay");
+const eventTypeSelect = document.getElementById("eventType");
 
-// load event data
-fetch("http://localhost:3000/api/events-with-location")
-  .then(response => response.json())
-  .then(data => {
+let sliderInitialised = false;
+let totalDays = 0;
+let loadedDays = 0;
+let currentType = "events";
+let currentLoadToken = 0;
 
-    if (!Array.isArray(data)) {
-      console.error("api did not return an array:", data);
-      return;
+function generateAllDates() {
+  const dates = [];
+
+  for (let month = 1; month <= 12; month++) {
+    const daysInMonth = new Date(2024, month, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      dates.push({
+        month: String(month).padStart(2, "0"),
+        day: String(day).padStart(2, "0")
+      });
     }
-    
-    allEvents = data;
-    setupTimeline(allEvents);
-    renderEvents(allEvents);
-  })
-  .catch(error => {
-    console.error("Error loading events:", error);
-  });
+  }
 
-// setup timeline
-function setupTimeline(events) {
-
-  const years = events.map(e => e.year);
-
-  const minYear = Math.min(...years);
-  const maxYear = Math.max(...years);
-
-  noUiSlider.create(slider, {
-    start: [minYear, maxYear],
-    connect: true,
-    step: 1,
-    range: {
-      min: minYear,
-      max: maxYear
-    },
-    format: {
-      to: value => Math.round(value),
-      from: value => Number(value)
-    }
-  });
-
-  slider.noUiSlider.on("update", handleTimelineChange);
+  return dates;
 }
 
+async function fetchDay(month, day, type = "events") {
+  const response = await fetch(
+    `http://localhost:3000/api/events-with-location?type=${encodeURIComponent(type)}&month=${month}&day=${day}`
+  );
 
-// render markers
-function renderEvents(events) {
+  const data = await response.json();
+
+  if (!Array.isArray(data)) {
+    console.error(`API did not return an array for ${type} ${month}/${day}:`, data);
+    return [];
+  }
+
+  return data
+    .filter(event =>
+      typeof event.year === "number" &&
+      typeof event.lat === "number" &&
+      typeof event.lon === "number"
+    )
+    .map(event => ({
+      ...event,
+      month,
+      day
+    }));
+}
+
+function resetState() {
+  allEvents = [];
+  seenEvents.clear();
+  loadedDays = 0;
 
   markerCluster.clearLayers();
 
-  events.forEach(event => {
+  if (slider.noUiSlider) {
+    slider.noUiSlider.destroy();
+  }
 
+  sliderInitialised = false;
+}
+
+function addEvents(newEvents) {
+  let added = false;
+
+  for (const event of newEvents) {
+    const key = `${event.year}|${event.month}|${event.day}|${event.title}`;
+
+    if (seenEvents.has(key)) continue;
+
+    seenEvents.add(key);
+    allEvents.push(event);
+    added = true;
+  }
+
+  if (added) {
+    updateTimeline();
+    renderCurrentRange();
+  }
+}
+
+function updateTimeline() {
+  if (!allEvents.length) {
+    rangeDisplay.textContent = `Loading ${currentType}... ${loadedDays}/${totalDays} days`;
+    return;
+  }
+
+  const years = allEvents.map(e => e.year);
+  const minYear = Math.min(...years);
+  const maxYear = Math.max(...years);
+
+  if (!sliderInitialised) {
+    noUiSlider.create(slider, {
+      start: [minYear, maxYear],
+      connect: true,
+      step: 1,
+      range: {
+        min: minYear,
+        max: maxYear
+      },
+      format: {
+        to: value => Math.round(value),
+        from: value => Number(value)
+      }
+    });
+
+    slider.noUiSlider.on("update", handleTimelineChange);
+    sliderInitialised = true;
+  } else {
+    const currentValues = slider.noUiSlider.get().map(Number);
+
+    slider.noUiSlider.updateOptions({
+      range: {
+        min: minYear,
+        max: maxYear
+      },
+      start: currentValues
+    }, false);
+  }
+}
+
+function renderEvents(events) {
+  markerCluster.clearLayers();
+
+  events.forEach(event => {
     const marker = L.marker([event.lat, event.lon]);
 
     marker.bindPopup(`
       <strong>${event.title}</strong><br>
       ${event.year}<br>
+      ${event.day}/${event.month}
     `);
 
     markerCluster.addLayer(marker);
   });
-
-  map.addLayer(markerCluster);
 }
 
+function renderCurrentRange() {
+  if (!sliderInitialised) return;
 
-// timeline handler
-function handleTimelineChange(values) {
-  const start = Number(values[0]);
-  const end = Number(values[1]);
-
-  rangeDisplay.textContent =
-   `Showing: ${start} - ${end}`;
+  const [start, end] = slider.noUiSlider.get().map(Number);
 
   const filtered = allEvents.filter(e =>
     e.year >= start && e.year <= end
   );
 
   renderEvents(filtered);
+
+  rangeDisplay.textContent =
+    `Showing: ${start} - ${end} • ${filtered.length} plotted • ${loadedDays}/${totalDays} days loaded • ${currentType}`;
 }
+
+function handleTimelineChange() {
+  renderCurrentRange();
+}
+
+async function loadAllDaysProgressively(type = "events") {
+  currentLoadToken++;
+  const loadToken = currentLoadToken;
+
+  currentType = type;
+  resetState();
+
+  const dates = generateAllDates();
+  totalDays = dates.length;
+
+  rangeDisplay.textContent = `Loading ${type}... 0/${totalDays} days`;
+
+  const queue = [...dates];
+  const CONCURRENCY = 3;
+
+  async function worker() {
+    while (queue.length > 0) {
+      if (loadToken !== currentLoadToken) return;
+
+      const next = queue.shift();
+      if (!next) return;
+
+      try {
+        const events = await fetchDay(next.month, next.day, type);
+
+        if (loadToken !== currentLoadToken) return;
+
+        addEvents(events);
+      } catch (error) {
+        console.error(`Failed to load ${type} ${next.month}/${next.day}:`, error);
+      }
+
+      loadedDays++;
+
+      if (loadToken !== currentLoadToken) return;
+
+      if (!sliderInitialised) {
+        rangeDisplay.textContent = `Loading ${type}... ${loadedDays}/${totalDays} days`;
+      } else {
+        renderCurrentRange();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 120));
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: CONCURRENCY }, () => worker())
+  );
+
+  if (loadToken !== currentLoadToken) return;
+
+  if (!allEvents.length) {
+    rangeDisplay.textContent = `No plottable ${type} found`;
+    return;
+  }
+
+  renderCurrentRange();
+}
+
+// type selector listener
+eventTypeSelect.addEventListener("change", () => {
+  loadAllDaysProgressively(eventTypeSelect.value);
+});
+
+// initial load
+loadAllDaysProgressively(eventTypeSelect.value);

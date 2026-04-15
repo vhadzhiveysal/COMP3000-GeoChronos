@@ -75839,5 +75839,163 @@
       "lat": 41.0125,
       "lon": 28.98
     }
+  ],
+  "events:12-26": [
+    {
+      "year": 2025,
+      "title": "Israel recognises Somaliland as an independent state, becoming the first country to do so.",
+      "lat": 31,
+      "lon": 35
+    },
+    {
+      "year": 2015,
+      "title": "A violent EF-4 tornado hits Garland, Texas, killing nine and injuring almost 500 others.",
+      "lat": 32.90722222,
+      "lon": -96.63527778
+    },
+    {
+      "year": 2013,
+      "title": "An Irkut-Avia Antonov An-12 crashes on approach to Irkutsk Northwest Airport, killing all nine people on board.",
+      "lat": 52.39011111,
+      "lon": 104.14913889
+    },
+    {
+      "year": 2012,
+      "title": "China opens the world's longest high-speed rail route, which links Beijing and Guangzhou.",
+      "lat": 39.90666667,
+      "lon": 116.3975
+    },
+    {
+      "year": 2006,
+      "title": "Two earthquakes in Hengchun, Taiwan measuring 7.0 and 6.9 on the moment magnitude scale kill two and disrupt telecommunications across Asia.",
+      "lat": 21.82,
+      "lon": 120.61
+    },
+    {
+      "year": 2004,
+      "title": "The 9.1–9.3 Mw  Indian Ocean earthquake shakes northern Sumatra with a maximum Mercalli intensity of IX (Violent). One of the largest observed tsunamis, it affected coastal and partially mainland areas of Thailand, India, Sri Lanka, the Maldives, Malaysia, Myanmar, Bangladesh, and Indonesia; death toll is estimated at 227,898.",
+      "lat": 3.316,
+      "lon": 95.854
+    },
+    {
+      "year": 2003,
+      "title": "The 6.6 Mw  Bam earthquake shakes southeastern Iran with a maximum Mercalli intensity of IX (Violent), leaving more than 26,000 dead and 30,000 injured.",
+      "lat": 28.995,
+      "lon": 58.311
+    },
+    {
+      "year": 1994,
+      "title": "Four Armed Islamic Group hijackers seize control of Air France Flight 8969. When the plane lands at Marseille, a French Gendarmerie assault team boards the aircraft and kills the hijackers.",
+      "lat": 43.43972222,
+      "lon": 5.215
+    },
+    {
+      "year": 1993,
+      "title": "Kuban Airlines Flight 5719 crashes during a go-around at Gyumri Shirak International Airport, killing 35 of the 36 people on board.",
+      "lat": 40.739167,
+      "lon": 43.853611
+    },
+    {
+      "year": 1989,
+      "title": "United Express Flight 2415 crashes on approach to the Tri-Cities Airport in Pasco, Washington, killing all six people on board.",
+      "lat": 46.271,
+      "lon": -119.111
+    },
+    {
+      "year": 1980,
+      "title": "Witnesses report the first of several sightings of unexplained lights near RAF Woodbridge, in Rendlesham Forest, Suffolk, England, United Kingdom, an incident called \"Britain's Roswell\".",
+      "lat": 52.08888889,
+      "lon": 1.44916667
+    },
+    {
+      "year": 1972,
+      "title": "Vietnam War: As part of Operation Linebacker II, 120 American B-52 Stratofortress bombers attacked Hanoi, including 78 launched from Andersen Air Force Base in Guam, the largest single combat launch in Strategic Air Command history.",
+      "lat": 21,
+      "lon": 105.85
+    },
+    {
+      "year": 1968,
+      "title": "Pan Am Flight 799 crashes during takeoff from Elmendorf Air Force Base, killing three.",
+      "lat": 61.26666667,
+      "lon": -149.83333333
+    },
+    {
+      "year": 1966,
+      "title": "The first Kwanzaa is celebrated by Maulana Karenga, the chair of Black Studies at California State University, Long Beach.",
+      "lat": 33.783022,
+      "lon": -118.112858
+    },
+    {
+      "year": 1948,
+      "title": "The last Soviet troops withdraw from North Korea.",
+      "lat": 40,
+      "lon": 127
+    },
+    {
+      "year": 1944,
+      "title": "World War II: George S. Patton's Third Army breaks the encirclement of surrounded U.S. forces at Bastogne, Belgium.",
+      "lat": 50,
+      "lon": 5.7214
+    },
+    {
+      "year": 1943,
+      "title": "World War II: German warship Scharnhorst is sunk off Norway's North Cape after a battle against major Royal Navy forces.",
+      "lat": 72.26666667,
+      "lon": 28.68333333
+    },
+    {
+      "year": 1862,
+      "title": "American Civil War: The Battle of Chickasaw Bayou begins as Union General William T. Sherman starts landing his troops in an attempt to advance on Vicksburg, Mississippi.",
+      "lat": 32.40555556,
+      "lon": -90.84777778
+    },
+    {
+      "year": 1862,
+      "title": "Dakota War of 1862: The largest mass-hanging in U.S. history takes place in Mankato, Minnesota, where 38 Native American prisoners are hanged.",
+      "lat": 44.16472222,
+      "lon": -94.01388889
+    },
+    {
+      "year": 1860,
+      "title": "First Rules derby is held between Sheffield F.C. and Hallam F.C., the oldest football fixture in the world.",
+      "lat": 53.31,
+      "lon": -1.48
+    },
+    {
+      "year": 1811,
+      "title": "A theater fire in Richmond, Virginia kills 72 people, including the Governor of Virginia George William Smith and the president of the First National Bank of Virginia Abraham B. Venable.",
+      "lat": 37.538902,
+      "lon": -77.429876
+    },
+    {
+      "year": 1806,
+      "title": "Battles of Pultusk and Golymin: Russian forces hold French forces under Napoleon.",
+      "lat": 48.86222222,
+      "lon": 2.3325
+    },
+    {
+      "year": 1793,
+      "title": "Second Battle of Wissembourg: France defeats Austria.",
+      "lat": 49.0383,
+      "lon": 7.9469
+    },
+    {
+      "year": 1776,
+      "title": "American Revolutionary War: In the Battle of Trenton, the Continental Army under General George Washington executes a successful surprise attack and defeats a garrison of Hessian forces serving Great Britain.",
+      "lat": 40.22583333,
+      "lon": -74.76472222
+    },
+    {
+      "year": 1481,
+      "title": "Battle of Westbroek: An army of 4,000 to 5,000 soldiers raised by David of Burgundy, Bishop of Utrecht, attacks an armed mob of people from nearby Utrecht who were trying to avenge the massacre of the inhabitants of Westbroek.",
+      "lat": 52.09083333,
+      "lon": 5.12166667
+    },
+    {
+      "year": 887,
+      "title": "Berengar I is elected as king of Italy by the lords of Lombardy. He is crowned with the Iron Crown of Lombardy at Pavia.",
+      "lat": 45.58333333,
+      "lon": 9.91666667
+    }
   ]
 }

@@ -19,13 +19,18 @@ const seenEvents = new Set();
 // timeline elements
 const slider = document.getElementById("slider");
 const rangeDisplay = document.getElementById("rangeDisplay");
-const eventTypeSelect = document.getElementById("eventType");
 
 let sliderInitialised = false;
 let totalDays = 0;
 let loadedDays = 0;
-let currentType = "events";
-let currentLoadToken = 0;
+
+function formatYear(year) {
+  if (year < 0) {
+    return `${Math.abs(year)} BC`;
+  }
+
+  return `${year}`;
+}
 
 function generateAllDates() {
   const dates = [];
@@ -44,15 +49,15 @@ function generateAllDates() {
   return dates;
 }
 
-async function fetchDay(month, day, type = "events") {
+async function fetchDay(month, day) {
   const response = await fetch(
-    `http://localhost:3000/api/events-with-location?type=${encodeURIComponent(type)}&month=${month}&day=${day}`
+    `http://localhost:3000/api/events-with-location?month=${month}&day=${day}`
   );
 
   const data = await response.json();
 
   if (!Array.isArray(data)) {
-    console.error(`API did not return an array for ${type} ${month}/${day}:`, data);
+    console.error(`API did not return an array for ${month}/${day}:`, data);
     return [];
   }
 
@@ -67,20 +72,6 @@ async function fetchDay(month, day, type = "events") {
       month,
       day
     }));
-}
-
-function resetState() {
-  allEvents = [];
-  seenEvents.clear();
-  loadedDays = 0;
-
-  markerCluster.clearLayers();
-
-  if (slider.noUiSlider) {
-    slider.noUiSlider.destroy();
-  }
-
-  sliderInitialised = false;
 }
 
 function addEvents(newEvents) {
@@ -104,7 +95,7 @@ function addEvents(newEvents) {
 
 function updateTimeline() {
   if (!allEvents.length) {
-    rangeDisplay.textContent = `Loading ${currentType}... ${loadedDays}/${totalDays} days`;
+    rangeDisplay.textContent = `Loading events... ${loadedDays}/${totalDays} days`;
     return;
   }
 
@@ -150,7 +141,7 @@ function renderEvents(events) {
 
     marker.bindPopup(`
       <strong>${event.title}</strong><br>
-      ${event.year}<br>
+      ${formatYear(event.year)}<br>
       ${event.day}/${event.month}
     `);
 
@@ -170,51 +161,50 @@ function renderCurrentRange() {
   renderEvents(filtered);
 
   rangeDisplay.textContent =
-    `Showing: ${start} - ${end} • ${filtered.length} plotted • ${loadedDays}/${totalDays} days loaded • ${currentType}`;
+    `Showing: ${formatYear(start)} - ${formatYear(end)} • ${filtered.length} plotted • ${loadedDays}/${totalDays} days loaded`;
 }
 
 function handleTimelineChange() {
   renderCurrentRange();
 }
 
-async function loadAllDaysProgressively(type = "events") {
-  currentLoadToken++;
-  const loadToken = currentLoadToken;
+async function loadAllDaysProgressively() {
+  allEvents = [];
+  seenEvents.clear();
+  loadedDays = 0;
 
-  currentType = type;
-  resetState();
+  markerCluster.clearLayers();
+
+  if (slider.noUiSlider) {
+    slider.noUiSlider.destroy();
+  }
+
+  sliderInitialised = false;
 
   const dates = generateAllDates();
   totalDays = dates.length;
 
-  rangeDisplay.textContent = `Loading ${type}... 0/${totalDays} days`;
+  rangeDisplay.textContent = `Loading events... 0/${totalDays} days`;
 
   const queue = [...dates];
   const CONCURRENCY = 3;
 
   async function worker() {
     while (queue.length > 0) {
-      if (loadToken !== currentLoadToken) return;
-
       const next = queue.shift();
       if (!next) return;
 
       try {
-        const events = await fetchDay(next.month, next.day, type);
-
-        if (loadToken !== currentLoadToken) return;
-
+        const events = await fetchDay(next.month, next.day);
         addEvents(events);
       } catch (error) {
-        console.error(`Failed to load ${type} ${next.month}/${next.day}:`, error);
+        console.error(`Failed to load ${next.month}/${next.day}:`, error);
       }
 
       loadedDays++;
 
-      if (loadToken !== currentLoadToken) return;
-
       if (!sliderInitialised) {
-        rangeDisplay.textContent = `Loading ${type}... ${loadedDays}/${totalDays} days`;
+        rangeDisplay.textContent = `Loading events... ${loadedDays}/${totalDays} days`;
       } else {
         renderCurrentRange();
       }
@@ -227,20 +217,13 @@ async function loadAllDaysProgressively(type = "events") {
     Array.from({ length: CONCURRENCY }, () => worker())
   );
 
-  if (loadToken !== currentLoadToken) return;
-
   if (!allEvents.length) {
-    rangeDisplay.textContent = `No plottable ${type} found`;
+    rangeDisplay.textContent = "No plottable events found";
     return;
   }
 
   renderCurrentRange();
 }
 
-// type selector listener
-eventTypeSelect.addEventListener("change", () => {
-  loadAllDaysProgressively(eventTypeSelect.value);
-});
-
 // initial load
-loadAllDaysProgressively(eventTypeSelect.value);
+loadAllDaysProgressively();

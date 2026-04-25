@@ -17,23 +17,37 @@
 
   <main>
     <div id="timeline">
-      <div id="controls">
-        <label for="eventType">History type:</label>
-        <select id="eventType">
-          <option value="events" selected>Events</option>
-          <option value="selected">Selected</option>
-          <option value="births">Births</option>
-          <option value="deaths">Deaths</option>
-          <option value="holidays">Holidays</option>
-          <option value="all">All</option>
-        </select>
-      </div>
-
       <div id="slider"></div>
-      <p id="rangeDisplay"></p>
+      <p id="rangeDisplay">Loading timeline...</p>
     </div>
 
-    <div id="map"></div>
+    <div id="mapWrapper">
+      <div id="mapLegend">
+        <h3>Legend</h3>
+
+        <div class="legendItem">
+          <span class="legendDot legendDotSingle"></span>
+          <span>Single plotted event</span>
+        </div>
+
+        <div class="legendItem">
+          <span class="legendDot legendDotClusterSmall"></span>
+          <span>Small clustered events</span>
+        </div>
+
+        <div class="legendItem">
+          <span class="legendDot legendDotClusterMedium"></span>
+          <span>Medium clustered events</span>
+        </div>
+
+        <div class="legendItem">
+          <span class="legendDot legendDotClusterLarge"></span>
+          <span>Large clustered events</span>
+        </div>
+      </div>
+      
+      <div id="map"></div>
+    </div>
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

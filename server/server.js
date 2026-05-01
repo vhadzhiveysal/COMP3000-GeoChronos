@@ -45,9 +45,7 @@ function scheduleCacheSave() {
   }, 500);
 }
 
-/**
- * Extract the first valid coordinate from Wikimedia event pages
- */
+// extract the first valid coordinate from Wikimedia event pages
 function extractBestCoordinates(event) {
   if (!event.pages) return null;
 
@@ -67,18 +65,35 @@ function extractBestCoordinates(event) {
   return null;
 }
 
-function getCacheKey(type, month, day) {
-  return `${type}:${month}-${day}`;
+function getCacheKey(month, day) {
+  return `${month}-${day}`;
 }
 
-async function fetchDay(type, month, day) {
-  const key = getCacheKey(type, month, day);
+function generateAllDates() {
+  const dates = [];
+
+  for (let month = 1; month <= 12; month++) {
+    const daysInMonth = new Date(2024, month, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      dates.push({
+        month: String(month).padStart(2, "0"),
+        day: String(day).padStart(2, "0")
+      });
+    }
+  }
+
+  return dates;
+}
+
+async function fetchDay(month, day) {
+  const key = getCacheKey(month, day);
 
   if (dayCache[key]) {
     return dayCache[key];
   }
 
-  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/${type}/${month}/${day}`;
+  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/${month}/${day}`;
 
   const res = await fetch(url, {
     headers: {
@@ -88,17 +103,11 @@ async function fetchDay(type, month, day) {
   });
 
   if (!res.ok) {
-    throw new Error(`Wikimedia API error ${res.status} for ${type} ${month}/${day}`);
+    throw new Error(`Wikimedia API error ${res.status} for ${month}/${day}`);
   }
 
   const data = await res.json();
-
-  // Feed payload shape differs by type
-  const feedItems =
-    Array.isArray(data[type]) ? data[type]
-    : Array.isArray(data.events) ? data.events
-    : [];
-
+  const feedItems = Array.isArray(data.events) ? data.events : [];
   const results = [];
 
   for (const event of feedItems) {
@@ -130,18 +139,37 @@ app.get("/api/cache-status", (req, res) => {
   });
 });
 
-// single-day endpoint only
-app.get("/api/events-with-location", async (req, res) => {
-  let { month, day, type } = req.query;
+// return everything already cached
+app.get("/api/cached-events", (req, res) => {
+  const dates = generateAllDates();
+  const events = [];
+  const cachedDays = [];
 
-  type = String(type || "events").toLowerCase();
+  for (const date of dates) {
+    const key = getCacheKey(date.month, date.day);
 
-  const supported = new Set(["events", "selected", "births", "deaths", "holidays", "all"]);
-  if (!supported.has(type)) {
-    return res.status(400).json({
-      error: `Invalid type. Supported types: ${Array.from(supported).join(", ")}`
-    });
+    if (Array.isArray(dayCache[key])) {
+      cachedDays.push(`${date.month}-${date.day}`);
+
+      for (const event of dayCache[key]) {
+        events.push({
+          ...event,
+          month: date.month,
+          day: date.day
+        });
+      }
+    }
   }
+
+  res.json({
+    events,
+    cachedDays
+  });
+});
+
+// single day endpoint only
+app.get("/api/events-with-location", async (req, res) => {
+  let { month, day } = req.query;
 
   if (!month || !day) {
     return res.status(400).json({
@@ -153,7 +181,7 @@ app.get("/api/events-with-location", async (req, res) => {
   day = String(day).padStart(2, "0");
 
   try {
-    const results = await fetchDay(type, month, day);
+    const results = await fetchDay(month, day);
     res.json(results);
   } catch (err) {
     console.error(err.message);

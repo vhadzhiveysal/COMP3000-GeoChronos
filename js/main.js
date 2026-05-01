@@ -25,11 +25,7 @@ let totalDays = 0;
 let loadedDays = 0;
 
 function formatYear(year) {
-  if (year < 0) {
-    return `${Math.abs(year)} BC`;
-  }
-
-  return `${year}`;
+  return year < 0 ? `${Math.abs(year)} BC` : `${year}`;
 }
 
 function generateAllDates() {
@@ -47,6 +43,28 @@ function generateAllDates() {
   }
 
   return dates;
+}
+
+async function fetchCachedEvents() {
+  const response = await fetch("http://localhost:3000/api/cached-events");
+  const data = await response.json();
+
+  if (!data || !Array.isArray(data.events) || !Array.isArray(data.cachedDays)) {
+    console.error("Cached events endpoint returned unexpected data:", data);
+    return {
+      events: [],
+      cachedDays: new Set()
+    };
+  }
+
+  return {
+    events: data.events.filter(event =>
+      typeof event.year === "number" &&
+      typeof event.lat === "number" &&
+      typeof event.lon === "number"
+    ),
+    cachedDays: new Set(data.cachedDays)
+  };
 }
 
 async function fetchDay(month, day) {
@@ -72,6 +90,14 @@ async function fetchDay(month, day) {
       month,
       day
     }));
+}
+
+function rebuildSeenSet() {
+  seenEvents.clear();
+
+  for (const event of allEvents) {
+    seenEvents.add(`${event.year}|${event.month}|${event.day}|${event.title}`);
+  }
 }
 
 function addEvents(newEvents) {
@@ -168,25 +194,18 @@ function handleTimelineChange() {
   renderCurrentRange();
 }
 
-async function loadAllDaysProgressively() {
-  allEvents = [];
-  seenEvents.clear();
-  loadedDays = 0;
-
-  markerCluster.clearLayers();
-
-  if (slider.noUiSlider) {
-    slider.noUiSlider.destroy();
-  }
-
-  sliderInitialised = false;
-
+async function loadMissingDaysProgressively(cachedDays) {
   const dates = generateAllDates();
   totalDays = dates.length;
+  loadedDays = cachedDays.size;
 
-  rangeDisplay.textContent = `Loading events... 0/${totalDays} days`;
+  if (!sliderInitialised) {
+    rangeDisplay.textContent = `Loading events... ${loadedDays}/${totalDays} days`;
+  } else {
+    renderCurrentRange();
+  }
 
-  const queue = [...dates];
+  const queue = dates.filter(date => !cachedDays.has(`${date.month}-${date.day}`));
   const CONCURRENCY = 3;
 
   async function worker() {
@@ -225,5 +244,37 @@ async function loadAllDaysProgressively() {
   renderCurrentRange();
 }
 
+async function initialiseApp() {
+  markerCluster.clearLayers();
+
+  if (slider.noUiSlider) {
+    slider.noUiSlider.destroy();
+  }
+
+  sliderInitialised = false;
+  allEvents = [];
+  totalDays = generateAllDates().length;
+  loadedDays = 0;
+  rangeDisplay.textContent = `Loading events... 0/${totalDays} days`;
+
+  try {
+    const cached = await fetchCachedEvents();
+
+    if (cached.events.length > 0) {
+      allEvents = cached.events;
+      rebuildSeenSet();
+      loadedDays = cached.cachedDays.size;
+
+      updateTimeline();
+      renderCurrentRange();
+    }
+
+    await loadMissingDaysProgressively(cached.cachedDays);
+  } catch (error) {
+    console.error("Failed to initialise app:", error);
+    rangeDisplay.textContent = "Failed to load events";
+  }
+}
+
 // initial load
-loadAllDaysProgressively();
+initialiseApp();

@@ -63,7 +63,7 @@ The current version focuses on the strongest and most reliable working feature s
 
 ## Project Structure
 
-```text
+```
 GeoChronos/
 │
 ├── index.html
@@ -76,3 +76,70 @@ GeoChronos/
     ├── server.js
     └── cache/
         └── day-cache.json
+```
+
+## How it works
+
+1. The frontend requests event data day by day from the backend.
+2. The backend checks whether that day already exists in the local cache.
+3. If cached, the server returns the saved result.
+4. If not cached, the server requests the data from Wikimedia.
+5. Events with valid coordinates are returned to the frontend.
+6. The frontend progressively adds markers to the map and updates the timeline range.
+
+## Setup Instructions
+
+### 1. Clone the repository
+
+```
+git clone <https://github.com/vhadzhiveysal/COMP3000-GeoChronos>
+cd GeoChronos
+```
+
+### 2. Install backend dependencies
+
+Open a terminal inside the `server` folder:
+
+```
+cd server
+npm install
+```
+
+### 3. Start the backend
+
+```
+node server.js
+```
+You should see something like:
+`Server running on port 3000`
+
+### 4. Run the frontend
+You can run the frontend with `Live Server` in VS Code, or use a simple local server from the project root:
+
+```
+python -m http.server 8000
+```
+
+Then open:
+`http://localhost:8000`
+
+## Usage 
+- Wait for events to load progressively on the map
+- Zoom in and out to explore different regions
+- Click markers to view event details
+- Use the timeline slider to filter events by year range
+
+## Example Interface Features
+- Single plotted event = one mapped historical event
+- Clustered markers = multiple nearby events grouped together
+- Timeline slider = controls which years are visible on the map
+
+## Design Decisions
+A few important design decisions shaped the current version of the project:
+- Direct coordinate extraction was prioritised over aggressive inference to keep results more reliable
+- Marker clustering was added to improve readability
+- Progressive loading was used to avoid long blocking waits
+- Backend caching was introduced to reduce repeated calls to the same API endpoints
+
+## Author
+Veysel Hadzhiveysal

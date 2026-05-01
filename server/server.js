@@ -65,8 +65,8 @@ function extractBestCoordinates(event) {
   return null;
 }
 
-function getCacheKey(month, day) {
-  return `${month}-${day}`;
+function getCacheKey(type, month, day) {
+  return `${type}:${month}-${day}`;
 }
 
 function generateAllDates() {
@@ -86,14 +86,14 @@ function generateAllDates() {
   return dates;
 }
 
-async function fetchDay(month, day) {
-  const key = getCacheKey(month, day);
+async function fetchDay(type, month, day) {
+  const key = getCacheKey(type, month, day);
 
   if (dayCache[key]) {
     return dayCache[key];
   }
 
-  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/${month}/${day}`;
+  const url = `https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/${type}/${month}/${day}`;
 
   const res = await fetch(url, {
     headers: {
@@ -103,11 +103,16 @@ async function fetchDay(month, day) {
   });
 
   if (!res.ok) {
-    throw new Error(`Wikimedia API error ${res.status} for ${month}/${day}`);
+    throw new Error(`Wikimedia API error ${res.status} for ${type} ${month}/${day}`);
   }
 
   const data = await res.json();
-  const feedItems = Array.isArray(data.events) ? data.events : [];
+
+  const feedItems =
+    Array.isArray(data[type]) ? data[type]
+    : Array.isArray(data.events) ? data.events
+    : [];
+
   const results = [];
 
   for (const event of feedItems) {
@@ -139,14 +144,25 @@ app.get("/api/cache-status", (req, res) => {
   });
 });
 
-// return everything already cached
+// return everything already cached for a type
 app.get("/api/cached-events", (req, res) => {
+  let { type } = req.query;
+
+  type = String(type || "events").toLowerCase();
+
+  const supported = new Set(["events", "selected", "births", "deaths", "holidays", "all"]);
+  if (!supported.has(type)) {
+    return res.status(400).json({
+      error: `Invalid type. Supported types: ${Array.from(supported).join(", ")}`
+    });
+  }
+
   const dates = generateAllDates();
   const events = [];
   const cachedDays = [];
 
   for (const date of dates) {
-    const key = getCacheKey(date.month, date.day);
+    const key = getCacheKey(type, date.month, date.day);
 
     if (Array.isArray(dayCache[key])) {
       cachedDays.push(`${date.month}-${date.day}`);
@@ -169,7 +185,16 @@ app.get("/api/cached-events", (req, res) => {
 
 // single day endpoint only
 app.get("/api/events-with-location", async (req, res) => {
-  let { month, day } = req.query;
+  let { month, day, type } = req.query;
+
+  type = String(type || "events").toLowerCase();
+
+  const supported = new Set(["events", "selected", "births", "deaths", "holidays", "all"]);
+  if (!supported.has(type)) {
+    return res.status(400).json({
+      error: `Invalid type. Supported types: ${Array.from(supported).join(", ")}`
+    });
+  }
 
   if (!month || !day) {
     return res.status(400).json({
@@ -181,7 +206,7 @@ app.get("/api/events-with-location", async (req, res) => {
   day = String(day).padStart(2, "0");
 
   try {
-    const results = await fetchDay(month, day);
+    const results = await fetchDay(type, month, day);
     res.json(results);
   } catch (err) {
     console.error(err.message);

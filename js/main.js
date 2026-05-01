@@ -25,7 +25,11 @@ let totalDays = 0;
 let loadedDays = 0;
 
 function formatYear(year) {
-  return year < 0 ? `${Math.abs(year)} BC` : `${year}`;
+  if (year < 0) {
+    return `${Math.abs(year)} BC`;
+  }
+
+  return `${year}`;
 }
 
 function generateAllDates() {
@@ -46,10 +50,14 @@ function generateAllDates() {
 }
 
 async function fetchCachedEvents() {
-  const response = await fetch("http://localhost:3000/api/cached-events");
+  const response = await fetch("http://localhost:3000/api/cached-events?type=events");
   const data = await response.json();
 
-  if (!data || !Array.isArray(data.events) || !Array.isArray(data.cachedDays)) {
+  if (
+    !data ||
+    !Array.isArray(data.events) ||
+    !Array.isArray(data.cachedDays)
+  ) {
     console.error("Cached events endpoint returned unexpected data:", data);
     return {
       events: [],
@@ -96,7 +104,8 @@ function rebuildSeenSet() {
   seenEvents.clear();
 
   for (const event of allEvents) {
-    seenEvents.add(`${event.year}|${event.month}|${event.day}|${event.title}`);
+    const key = `${event.year}|${event.month}|${event.day}|${event.title}`;
+    seenEvents.add(key);
   }
 }
 
